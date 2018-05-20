@@ -1,0 +1,3 @@
+  #Java scanner class. The following charaters can be skiped while reading from input.
+  String[] arrRowItems = scanner.nextLine().split(" ");
+            scanner.skip("(\r\n|[\n\r\u2028\u2029\u0085])?");
