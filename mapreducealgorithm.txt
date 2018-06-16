@@ -1,0 +1,108 @@
+MAP(key,value)
+
+//Assume record is tab delemited
+1. RECORD_FIELDS = split(value,'\t') 
+
+//Selecting only records which have  event_epoch_time, user_id, device_id, user_agent as NOT NULL. The rest of the records are discarded.
+2. IF RECORD_FIELDS[0] IS NOT NULL and RECORD_FIELDS[1] IS NOT NULL and RECORD_FIELDS[2] IS NOT NULL and RECORD_FIELDS[3] IS NOT NULL then
+3.	USR_AGNT = split(RECORD_FIELDS[3],":")
+4.	OS_VERSION = USR_AGNT[1]
+5.	PLATFORM = USR_AGNT[0]
+	
+6. 	IF RECORD_FIELDS[11] = 'Y' then 
+7.		WRITE(VEGPIZZA,1) 
+8.	ELSE WRITE(NONGVEGPIZZA,1)
+	
+9.	IF RECORD_FIELDS[6] = 'L' then
+10.		WRITE(SIZE_LARGE,1)
+11.	ELSE IF RECORD_FIELDS[6] = 'M' then
+12.		WRITE(SIZE_MEDIUM,1)
+13.	ELSE IF RECORD_FIELDS[6] = 'R' then
+14.		WRITE(SIZE_SMALL,1)
+	
+15.	IF RECORD_FIELDS[5] = 'Y' then
+16.		WRITE(CHEESEBURST,1) 
+	
+17.	IF RECORD_FIELDS[5] = 'Y' and RECORD_FIELDS[6] = 'R' then
+18.		WRITE(CHEESEBURST_SMALL,1)
+19. ELSE  WRITE(CHEESEBURST_SMALL",0)
+	
+19.	IF RECORD_FIELDS[5] = 'Y' and RECORD_FIELDS[8] < 500 then
+20.		WRITE(CHEESEBURST_PRICE,1)
+	
+21. END IF
+
+COMBINER(KEY,VALUE)
+
+
+
+REDUCE(key, valueList)
+
+1. 	COUNT =  0
+2.	FOR i = 1 to valueList.length
+3.		COUNT = COUNT + valueList[i]
+4.	WRITE(key, COUNT)
+
+Explanation:
+
+The above is the pseducode for the map and reduce part of the problem statement as solution to implement if global counter is not available.
+
+Map Phase : 
+Assume we receive a key value pair in the map function. Key part as of now can be ignored as I am considering it identifier of a record. The value part contains the complete record details. Record is tab delimited.
+Since only one records is processed by the map part at a time it is suited for parallel processing on different prcessing units.
+
+In MAP phase step 2 the condition for null is checked for those 4 fields - event_epoch_time, user_id, device_id, user_agent - and if all the fields are valid only the records is selected.
+In MAP phase step 3 the os version and platform is seperated out from user_agent field considering the field seperator is ":".
+
+
+In MAP phase step 6 to 8 condition for veg and non-veg pizzas is checked and  "VEGPIZZA" and "NONVEGPIZZA"  
+In MAP phase step 9 to 14 size wise distribution of pizzas are checked and based on the value we write to output of the varaibles "SIZE_LARGE","SIZE_MEDIUM" and "SIZE_SMALL" with the value 1 for corresponding variables.
+In MAP phase step 15 and 16 the number of cheese burst pizzas are checked and based on the value we write to output of the varaible "CHEESEBURST"  with the value 1 for corresponding variable.
+In MAP phase step 17 and 19 the number of small cheese burst pizzas are checked and based on the value we write to output of the varaible "CHEESEBURST_SMALL"  with the value 1 for corresponding variable.Here since there is a very less chance to have that small cheese burst pizza ,so with the value is set to 0 if such a pizza is not found.
+In MAP phase step 19 and 20 the number of cheese burst pizzas with price less that 500 are checked and based on the value we write to output of the varaible "CHEESEBURST_PRICE" with the value 1 for corresponding variable.
+
+Here each write function will give an output like 
+
+(VEGPIZZA,1) , (VEGPIZZA,1)
+(NONVEGPIZZA,1)
+(SIZE_LARGE,1) , (SIZE_LARGE,1)
+(SIZE_MEDIUM,1)
+(SIZE_SMALL,1)
+(CHEESEBURST,1) 
+(CHEESEBURST_SMALL,1) , (CHEESEBURST_SMALL,0)
+(CHEESEBURST_PRICE,1) , (CHEESEBURST_PRICE,1)
+
+The number of frequenies of the above list will vary dependes on the number of occurance of the records with which we are checking for the values.
+
+The actual ouput of the will inlcude a COMBINER phase also to aggregate the above set to a value list to group all the variable belong to same set.
+The ouput after combiner set for above example is 
+
+(VEGPIZZA,{1,1})
+(NONVEGPIZZA,1)
+(SIZE_LARGE,{1,1})
+(SIZE_MEDIUM,1)
+(SIZE_SMALL,1)
+(CHEESEBURST,1) 
+(CHEESEBURST_SMALL,{1,0})
+(CHEESEBURST_PRICE,{1,1})
+
+Reduce Phase :
+
+The Output of map and comber phase is fed to Reduce phase. The reduce phase will sum up all the combined values for the variable we need to produce the desired output
+Here the value of list is taken and is summed up.
+
+So output of above set of variables is 
+
+(VEGPIZZA,2)
+(NONVEGPIZZA,1)
+(SIZE_LARGE,2)
+(SIZE_MEDIUM,1)
+(SIZE_SMALL,1)
+(CHEESEBURST,1) 
+(CHEESEBURST_SMALL,1)
+(CHEESEBURST_PRICE,2)
+
+
+ 
+
+
